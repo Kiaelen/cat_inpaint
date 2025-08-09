@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import os.path as path
 import numpy as np
 from tqdm import tqdm
+import os
 
 def draw_grid(image):
     plt.imshow(image)
@@ -67,8 +68,8 @@ if __name__ == "__main__":
     depth = get_depth(ori_img)
 
     # Where cat should be
-    crop_area = [0, 500, 400, 900]
-    mask_area = [0, 600, 200, 800]
+    crop_area = [0, 500, 300, 900]
+    mask_area = [0, 600, 150, 800]
     for i in range(4):
         mask_area[i] -= crop_area[i % 2]
 
@@ -88,14 +89,17 @@ if __name__ == "__main__":
     draw.rectangle(mask_area, fill=255)
     mask_ = np.asarray(mask)
     mask_ = (mask_ == 255)
-    mask_ |= (depth_cropped <= threshold)
+    # mask_ |= (depth_cropped <= threshold)
     mask_ = mask_.astype(np.uint8) * 255
-    
     mask = Image.fromarray(mask_)
     mask.save("mask.png")
     
-    prompt = "an obscure small black cat"
-    output = inpaint(cropped, mask, prompt)
+    comb_mask_ = np.clip(cropped + mask_[..., None] * 100, a_max=255, a_min=None).astype(np.uint8)
+    comb_mask = Image.fromarray(comb_mask_)
+    comb_mask.save("combined.png")
+    
+    prompt = "a furry black cat with brown ears, side view"
+    output = inpaint(cropped_img, mask, prompt)
     output.save("inpainted_cropped_raw.png")
     
     inpainted = np.asarray(output)
@@ -103,5 +107,5 @@ if __name__ == "__main__":
     inpainted_img = Image.fromarray(inpainted)
     inpainted_img.save("inpainted_cropped.png")
 
-    ori_img.paste(output, (crop_area[0], crop_area[1]))
+    ori_img.paste(inpainted_img, (crop_area[0], crop_area[1]))
     ori_img.save("inpainted_original.png")
